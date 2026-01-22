@@ -1,114 +1,106 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Radar Command</title>
+<title>ATC Radar Display</title>
 
 <style>
-* { box-sizing:border-box; }
-
-body{
+html,body{
   margin:0;
   background:#000;
-  color:#9fdcff;
-  font-family: monospace;
   overflow:hidden;
+  font-family: monospace;
+  color:#9f9;
 }
 
 /* ===== TOP BAR ===== */
 #topbar{
-  height:32px;
-  background:#2b2b2b;
+  height:28px;
+  background:#8fa6b8;
+  color:#000;
   display:flex;
   align-items:center;
-  padding:0 10px;
-  border-bottom:1px solid #444;
-  font-size:12px;
+  padding:0 8px;
+  font-size:13px;
 }
 
 /* ===== LAYOUT ===== */
-#container{
+#layout{
   display:grid;
   grid-template-columns: 56px 1fr 260px;
   grid-template-rows: 1fr 48px;
-  height:calc(100vh - 32px);
+  height: calc(100vh - 28px);
 }
 
-/* ===== LEFT TOOLBAR ===== */
+/* ===== LEFT BAR ===== */
 #leftbar{
   grid-row:1 / span 2;
-  background:#1e1e1e;
-  border-right:1px solid #444;
-}
-.tool{
-  height:48px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border-bottom:1px solid #333;
+  background:#111;
+  border-right:1px solid #333;
 }
 
-/* ===== MAIN VIEW ===== */
+/* ===== MAIN ===== */
 #main{
   position:relative;
 }
+
 canvas{
+  display:block;
   width:100%;
   height:100%;
-  display:block;
-  background:#000;
 }
 
 /* ===== RIGHT PANEL ===== */
 #rightbar{
-  background:#1e1e1e;
-  border-left:1px solid #444;
+  background:#111;
+  border-left:1px solid #333;
+  font-size:12px;
 }
+
 .panel{
   padding:8px;
   border-bottom:1px solid #333;
-  font-size:12px;
 }
+
 .panel h3{
   margin:0 0 6px;
   font-size:12px;
   color:#fff;
-  border-bottom:1px solid #555;
+  border-bottom:1px solid #444;
 }
+
+.value{ color:#9f9; }
+.muted{ color:#666; }
 
 /* ===== BOTTOM BAR ===== */
 #bottombar{
   grid-column:2 / span 2;
-  background:#2b2b2b;
-  border-top:1px solid #444;
+  background:#111;
+  border-top:1px solid #333;
   display:flex;
   align-items:center;
   padding:0 10px;
   font-size:12px;
 }
-
-.value{ color:#9fdcff; }
-.muted{ color:#666; }
 </style>
 </head>
 
 <body>
 
 <div id="topbar">
-  RADAR COMMAND DISPLAY
-  <div style="margin-left:auto" id="time"></div>
+  <b>18 : 06 : 31</b>
+  <span style="margin-left:10px;">Settings</span>
+  <span style="margin-left:10px;">AirSitu</span>
+  <span style="margin-left:10px;">Info</span>
+  <div style="margin-left:auto;">ATC SURVEILLANCE</div>
 </div>
 
-<div id="container">
+<div id="layout">
 
-  <div id="leftbar">
-    <div class="tool">📡</div>
-    <div class="tool">✈️</div>
-    <div class="tool">⚠️</div>
-  </div>
+  <div id="leftbar"></div>
 
   <div id="main">
-    <canvas id="radar"></canvas>
+    <canvas id="c"></canvas>
   </div>
 
   <div id="rightbar">
@@ -121,63 +113,106 @@ canvas{
   </div>
 
   <div id="bottombar">
-    Message Log · Radar Sweep 1s
+    Message Log · Radar Sweep ~1s
   </div>
 
 </div>
 
 <script>
-/* ===== TIME ===== */
-setInterval(()=>{
-  document.getElementById("time").textContent =
-    "Local " + new Date().toLocaleTimeString();
-},1000);
+/* ================= CANVAS ================= */
 
-/* ===== CANVAS ===== */
-const canvas = document.getElementById("radar");
+const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
 function resize(){
   canvas.width = canvas.clientWidth;
   canvas.height = canvas.clientHeight;
 }
-addEventListener("resize",resize);
+addEventListener("resize", resize);
 resize();
 
-/* ===== DATA ===== */
+/* ================= AIRCRAFT (GIỮ NGUYÊN) ================= */
+
 const TYPES = [
   {name:"Passenger", color:"#00ff66", shape:"diamond", side:"Civilian"},
   {name:"Cargo", color:"#00ffff", shape:"rect", side:"Civilian"},
-  {name:"Friendly Military", color:"#ffd700", shape:"triangle", side:"Friendly"},
-  {name:"Foreign Military", color:"#ffffff", shape:"square", side:"Foreign"}
+  {name:"Friendly", color:"#ffd700", shape:"triangle", side:"Friendly"},
+  {name:"Foreign", color:"#ffffff", shape:"square", side:"Foreign"}
 ];
 
-function wp(){ return {x:Math.random()*canvas.width,y:Math.random()*canvas.height}; }
+function wp(x,y){ return {x,y}; }
 
-function callsign(){
-  const a=["AFR","BAW","SWR","DLH","EZY","ANA"];
-  return a[Math.floor(Math.random()*a.length)]+Math.floor(100+Math.random()*900);
+function randomCallsign(){
+  const a=["AFR","BAW","SWR","DLH","EZY","AAL","ANA"];
+  return a[Math.floor(Math.random()*a.length)] + Math.floor(100+Math.random()*900);
+}
+
+function spawn(){
+  const t = TYPES[Math.floor(Math.random()*TYPES.length)];
+  return {
+    type:t,
+    x: Math.random()*canvas.width,
+    y: Math.random()*canvas.height,
+    route:[
+      wp(Math.random()*canvas.width,Math.random()*canvas.height),
+      wp(Math.random()*canvas.width,Math.random()*canvas.height),
+      wp(Math.random()*canvas.width,Math.random()*canvas.height),
+      wp(Math.random()*canvas.width,Math.random()*canvas.height)
+    ],
+    wpIndex:0,
+    speed:5,
+    callsign: randomCallsign(),
+    alt: Math.floor(240+Math.random()*120),
+    cfl: Math.floor(300+Math.random()*80),
+    spd: Math.floor(350+Math.random()*150)
+  };
 }
 
 const aircraft=[];
-for(let i=0;i<16;i++){
-  const t=TYPES[Math.floor(Math.random()*TYPES.length)];
-  aircraft.push({
-    type:t,
-    x:Math.random()*canvas.width,
-    y:Math.random()*canvas.height,
-    route:[wp(),wp(),wp(),wp()],
-    idx:0,
-    speed:5,
-    alt:Math.floor(250+Math.random()*150),
-    spd:Math.floor(350+Math.random()*150),
-    callsign:callsign()
-  });
+for(let i=0;i<18;i++) aircraft.push(spawn());
+
+/* ================= DRAW (GIỮ NGUYÊN ICON) ================= */
+
+function drawSymbol(a){
+  ctx.strokeStyle = a.type.color;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+
+  switch(a.type.shape){
+    case "diamond":
+      ctx.moveTo(a.x,a.y-6);
+      ctx.lineTo(a.x+6,a.y);
+      ctx.lineTo(a.x,a.y+6);
+      ctx.lineTo(a.x-6,a.y);
+      ctx.closePath();
+      break;
+    case "square":
+      ctx.rect(a.x-5,a.y-5,10,10);
+      break;
+    case "triangle":
+      ctx.moveTo(a.x,a.y-6);
+      ctx.lineTo(a.x+6,a.y+6);
+      ctx.lineTo(a.x-6,a.y+6);
+      ctx.closePath();
+      break;
+    case "rect":
+      ctx.rect(a.x-7,a.y-4,14,8);
+      break;
+  }
+  ctx.stroke();
 }
+
+function drawLabel(a){
+  ctx.fillStyle = a.type.color;
+  ctx.font = "11px monospace";
+  ctx.fillText(a.callsign, a.x+8, a.y-8);
+  ctx.fillText(`S F${a.alt} ↑ CFL`, a.x+8, a.y+4);
+}
+
+/* ================= CLICK / SELECT (ADD) ================= */
 
 let selected=null;
 
-/* ===== CLICK ===== */
 canvas.addEventListener("click",e=>{
   const r=canvas.getBoundingClientRect();
   const mx=e.clientX-r.left;
@@ -190,7 +225,6 @@ canvas.addEventListener("click",e=>{
   updatePanel();
 });
 
-/* ===== PANEL ===== */
 function updatePanel(){
   const p=document.getElementById("unitPanel");
   if(!selected){
@@ -205,59 +239,56 @@ function updatePanel(){
     Allegiance: <span class="value">${selected.type.side}</span><br>
     Speed: <span class="value">${selected.spd} kts</span><br>
     Altitude: <span class="value">FL${selected.alt}</span><br>
-    Route WP: <span class="value">${selected.idx+1}/${selected.route.length}</span>
+    Waypoint: <span class="value">${selected.wpIndex+1}/${selected.route.length}</span>
   `;
 }
 
-/* ===== DRAW ===== */
-function drawSymbol(a){
-  ctx.strokeStyle = a===selected ? "#ff5555" : a.type.color;
-  ctx.lineWidth=1;
-  ctx.beginPath();
-  switch(a.type.shape){
-    case"diamond":
-      ctx.moveTo(a.x,a.y-6);
-      ctx.lineTo(a.x+6,a.y);
-      ctx.lineTo(a.x,a.y+6);
-      ctx.lineTo(a.x-6,a.y);
-      ctx.closePath();break;
-    case"square":
-      ctx.rect(a.x-5,a.y-5,10,10);break;
-    case"triangle":
-      ctx.moveTo(a.x,a.y-6);
-      ctx.lineTo(a.x+6,a.y+6);
-      ctx.lineTo(a.x-6,a.y+6);
-      ctx.closePath();break;
-    case"rect":
-      ctx.rect(a.x-7,a.y-4,14,8);break;
-  }
-  ctx.stroke();
-}
+/* ================= LOOP ================= */
 
-/* ===== LOOP ===== */
-let last=0;
-function loop(t){
-  if(t-last<1000) return requestAnimationFrame(loop);
-  last=t;
+let last=performance.now();
+
+function update(now){
+  if(now-last<900) return requestAnimationFrame(update);
+  last=now;
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   aircraft.forEach(a=>{
-    const w=a.route[a.idx];
-    const dx=w.x-a.x;
-    const dy=w.y-a.y;
+    const wp=a.route[a.wpIndex];
+    const dx=wp.x-a.x;
+    const dy=wp.y-a.y;
     const d=Math.hypot(dx,dy);
-    if(d<8) a.idx=(a.idx+1)%a.route.length;
-    else{
+
+    if(d<10){
+      a.wpIndex=(a.wpIndex+1)%a.route.length;
+    }else{
       a.x+=dx/d*a.speed;
       a.y+=dy/d*a.speed;
     }
+
+    /* heading vector (GIỮ NGUYÊN) */
+    ctx.strokeStyle=a.type.color;
+    ctx.beginPath();
+    ctx.moveTo(a.x,a.y);
+    ctx.lineTo(a.x+dx/d*25,a.y+dy/d*25);
+    ctx.stroke();
+
+    /* highlight nếu selected */
+    if(a===selected){
+      ctx.strokeStyle="#ff4444";
+      ctx.beginPath();
+      ctx.arc(a.x,a.y,10,0,Math.PI*2);
+      ctx.stroke();
+    }
+
     drawSymbol(a);
+    drawLabel(a);
   });
 
-  requestAnimationFrame(loop);
+  requestAnimationFrame(update);
 }
-requestAnimationFrame(loop);
+
+requestAnimationFrame(update);
 </script>
 
 </body>
