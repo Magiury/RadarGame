@@ -10,17 +10,17 @@
 body {
   margin: 0;
   font-family: monospace;
-  background: #111;
-  color: #d0d0d0;
+  background: #000;
+  color: #8fdcff;
   overflow: hidden;
 }
 
 /* ================= TOP BAR ================= */
 
 #topbar {
-  height: 36px;
-  background: #2b2b2b;
-  border-bottom: 1px solid #444;
+  height: 34px;
+  background: #101820;
+  border-bottom: 1px solid #1f2f3a;
   display: flex;
   align-items: center;
   padding: 0 10px;
@@ -42,10 +42,8 @@ body {
 
 #container {
   display: flex;
-  height: calc(100vh - 36px);
+  height: calc(100vh - 34px);
 }
-
-/* ================= CENTER ================= */
 
 #center {
   flex: 1;
@@ -53,39 +51,20 @@ body {
   flex-direction: column;
 }
 
-#mainView {
-  flex: 1;
-  background: #050a0d;
-}
-
 canvas {
   width: 100%;
   height: 100%;
-  background: #050a0d;
+  background: #02070c;
 }
-
-/* ================= BOTTOM ================= */
-
-#bottombar {
-  height: 40px;
-  background: #2b2b2b;
-  border-top: 1px solid #444;
-  display: flex;
-  align-items: center;
-  padding: 0 10px;
-  font-size: 12px;
-}
-
-/* ================= RIGHT PANEL ================= */
 
 #rightbar {
   width: 260px;
-  background: #2f2f2f;
-  border-left: 1px solid #444;
+  background: #101820;
+  border-left: 1px solid #1f2f3a;
 }
 
 .panel {
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid #1f2f3a;
   padding: 8px;
   font-size: 12px;
 }
@@ -94,14 +73,12 @@ canvas {
   margin: 0 0 6px;
   font-size: 12px;
   color: #fff;
-  border-bottom: 1px solid #555;
+  border-bottom: 1px solid #2b3f4f;
   padding-bottom: 4px;
 }
 
+.muted { color: #667; }
 .value { color: #9fdcff; }
-.muted { color: #888; }
-.base { color: #ff6666; }
-
 </style>
 </head>
 
@@ -112,19 +89,13 @@ canvas {
   <div id="topbar-right">
     <div id="zulu">Zulu: --:--:--</div>
     <div id="local">Local: --:--:--</div>
-    <div id="zoomInfo">Zoom: 100%</div>
   </div>
 </div>
 
 <div id="container">
 
   <div id="center">
-    <div id="mainView">
-      <canvas id="radar"></canvas>
-    </div>
-    <div id="bottombar">
-      Scroll to Zoom In | Click Aircraft to Select
-    </div>
+    <canvas id="radar"></canvas>
   </div>
 
   <div id="rightbar">
@@ -163,59 +134,34 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 
-/* ================= ZOOM (100%+) ================= */
+/* ================= RADAR OVERLAY ================= */
 
-let zoom = 1;
+function drawOverlay() {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
 
-canvas.addEventListener("wheel", e => {
-  e.preventDefault();
-  zoom += e.deltaY * -0.001;
-  zoom = Math.min(Math.max(zoom, 1), 3);
-  document.getElementById("zoomInfo").textContent =
-    "Zoom: " + Math.round(zoom * 100) + "%";
-});
+  ctx.strokeStyle = "#163a4a";
+  ctx.lineWidth = 1;
 
-/* ================= MAP IMAGE ================= */
-
-const mapImg = new Image();
-mapImg.src = "map.png";
-
-let landPixels = [];
-let bases = [];
-
-mapImg.onload = () => {
-  detectLand();
-  placeBases();
-};
-
-/* detect non-transparent pixels */
-function detectLand() {
-  const temp = document.createElement("canvas");
-  temp.width = mapImg.width;
-  temp.height = mapImg.height;
-  const tctx = temp.getContext("2d");
-  tctx.drawImage(mapImg, 0, 0);
-
-  const img = tctx.getImageData(0, 0, temp.width, temp.height).data;
-
-  landPixels = [];
-  for (let y = 0; y < temp.height; y += 4) {
-    for (let x = 0; x < temp.width; x += 4) {
-      const a = img[(y * temp.width + x) * 4 + 3];
-      if (a > 0) landPixels.push({ x, y });
-    }
+  for (let r = 80; r < Math.min(cx, cy); r += 80) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
   }
-}
 
-/* random bases on land */
-function placeBases() {
-  bases = [];
-  for (let i = 0; i < 3; i++) {
-    bases.push(landPixels[Math.floor(Math.random() * landPixels.length)]);
+  for (let a = 0; a < 360; a += 30) {
+    const rad = a * Math.PI / 180;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(rad) * cx, cy + Math.sin(rad) * cy);
+    ctx.stroke();
   }
 }
 
 /* ================= AIRCRAFT ================= */
+
+const SHAPES = ["circle", "square", "diamond", "triangle", "rect"];
+const TYPES = ["Passenger", "Cargo", "Friendly Military", "Foreign Military"];
 
 const aircraft = [];
 let selected = null;
@@ -224,61 +170,116 @@ function spawnAircraft() {
   return {
     x: Math.random() * canvas.width,
     y: Math.random() * canvas.height,
-    vx: (Math.random() - 0.5) * 1.2,
-    vy: (Math.random() - 0.5) * 1.2,
-    altitude: Math.floor(8000 + Math.random() * 25000),
-    speed: Math.floor(250 + Math.random() * 250),
-    type: Math.random() > 0.5 ? "Civilian" : "Military"
+    vx: (Math.random() - 0.5) * 0.08,
+    vy: (Math.random() - 0.5) * 0.08,
+    shape: SHAPES[Math.floor(Math.random() * SHAPES.length)],
+    type: TYPES[Math.floor(Math.random() * TYPES.length)],
+    altitude: Math.floor(8000 + Math.random() * 30000),
+    speed: Math.floor(350 + Math.random() * 200)
   };
 }
 
-for (let i = 0; i < 10; i++) aircraft.push(spawnAircraft());
+for (let i = 0; i < 14; i++) aircraft.push(spawnAircraft());
+
+canvas.addEventListener("click", e => {
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left;
+  const my = e.clientY - r.top;
+
+  selected = null;
+
+  aircraft.forEach(a => {
+    if (Math.hypot(mx - a.x, my - a.y) < 8) selected = a;
+  });
+
+  updatePanel();
+});
+
+function updatePanel() {
+  const panel = document.getElementById("unitInfo");
+
+  if (!selected) {
+    panel.textContent = "Please Select A Designated Unit.";
+    panel.className = "muted";
+    return;
+  }
+
+  panel.className = "";
+  panel.innerHTML = `
+    Type: <span class="value">${selected.type}</span><br>
+    Altitude: <span class="value">${selected.altitude} ft</span><br>
+    Speed: <span class="value">${selected.speed} kts</span>
+  `;
+}
+
+/* ================= DRAW SHAPES ================= */
+
+function drawShape(a) {
+  ctx.beginPath();
+
+  switch (a.shape) {
+    case "circle":
+      ctx.arc(a.x, a.y, 4, 0, Math.PI * 2);
+      break;
+    case "square":
+      ctx.rect(a.x - 4, a.y - 4, 8, 8);
+      break;
+    case "diamond":
+      ctx.moveTo(a.x, a.y - 5);
+      ctx.lineTo(a.x + 5, a.y);
+      ctx.lineTo(a.x, a.y + 5);
+      ctx.lineTo(a.x - 5, a.y);
+      ctx.closePath();
+      break;
+    case "triangle":
+      ctx.moveTo(a.x, a.y - 5);
+      ctx.lineTo(a.x + 5, a.y + 5);
+      ctx.lineTo(a.x - 5, a.y + 5);
+      ctx.closePath();
+      break;
+    case "rect":
+      ctx.rect(a.x - 6, a.y - 3, 12, 6);
+      break;
+  }
+
+  ctx.fill();
+}
 
 /* ================= LOOP ================= */
 
-function loop() {
+let last = performance.now();
+
+function loop(now) {
+  const dt = (now - last) / 1000;
+  last = now;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const w = canvas.width * zoom;
-  const h = canvas.height * zoom;
-  ctx.drawImage(mapImg, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+  drawOverlay();
 
-  /* draw bases */
-  bases.forEach(b => {
-    const x = (b.x / mapImg.width) * w + (canvas.width - w) / 2;
-    const y = (b.y / mapImg.height) * h + (canvas.height - h) / 2;
-    ctx.fillStyle = "#ff5555";
-    ctx.fillRect(x - 3, y - 3, 6, 6);
-  });
-
-  /* aircraft random walk */
   aircraft.forEach(a => {
-    if (Math.random() < 0.03) {
-      a.vx += (Math.random() - 0.5) * 0.4;
-      a.vy += (Math.random() - 0.5) * 0.4;
+    /* slow + jitter */
+    if (Math.random() < 0.15) {
+      a.x += (Math.random() - 0.5) * 2;
+      a.y += (Math.random() - 0.5) * 2;
     }
 
-    a.x += a.vx;
-    a.y += a.vy;
+    a.x += a.vx * dt * 60 * 5;
+    a.y += a.vy * dt * 60 * 5;
 
     if (a.x < 0) a.x = canvas.width;
     if (a.y < 0) a.y = canvas.height;
     if (a.x > canvas.width) a.x = 0;
     if (a.y > canvas.height) a.y = 0;
 
-    const dx = canvas.width / 2 + (a.x - canvas.width / 2) * zoom;
-    const dy = canvas.height / 2 + (a.y - canvas.height / 2) * zoom;
-
-    ctx.beginPath();
-    ctx.arc(dx, dy, 4, 0, Math.PI * 2);
-    ctx.fillStyle = a === selected ? "#ffcc00" : "#7fdcff";
-    ctx.fill();
+    ctx.fillStyle = a === selected ? "#ffd966" : "#9fdcff";
+    drawShape(a);
   });
 
   requestAnimationFrame(loop);
 }
 
-loop();
+requestAnimationFrame(loop);
 </script>
 
 </body>
