@@ -1,285 +1,176 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Radar Command</title>
+<title>ATC Radar Display</title>
 
 <style>
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
+html,body{
+  margin:0;
+  background:#000;
+  overflow:hidden;
   font-family: monospace;
-  background: #000;
-  color: #8fdcff;
-  overflow: hidden;
+  color:#9f9;
 }
 
-/* ================= TOP BAR ================= */
-
-#topbar {
-  height: 34px;
-  background: #101820;
-  border-bottom: 1px solid #1f2f3a;
-  display: flex;
-  align-items: center;
-  padding: 0 10px;
-  font-size: 12px;
+#topbar{
+  height:28px;
+  background:#8fa6b8;
+  color:#000;
+  display:flex;
+  align-items:center;
+  padding:0 8px;
+  font-size:13px;
 }
 
-#logo {
-  font-weight: bold;
-  color: #9fdcff;
+#topbar .right{
+  margin-left:auto;
 }
 
-#topbar-right {
-  margin-left: auto;
-  display: flex;
-  gap: 15px;
+canvas{
+  display:block;
 }
-
-/* ================= LAYOUT ================= */
-
-#container {
-  display: flex;
-  height: calc(100vh - 34px);
-}
-
-#center {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-canvas {
-  width: 100%;
-  height: 100%;
-  background: #02070c;
-}
-
-#rightbar {
-  width: 260px;
-  background: #101820;
-  border-left: 1px solid #1f2f3a;
-}
-
-.panel {
-  border-bottom: 1px solid #1f2f3a;
-  padding: 8px;
-  font-size: 12px;
-}
-
-.panel h3 {
-  margin: 0 0 6px;
-  font-size: 12px;
-  color: #fff;
-  border-bottom: 1px solid #2b3f4f;
-  padding-bottom: 4px;
-}
-
-.muted { color: #667; }
-.value { color: #9fdcff; }
 </style>
 </head>
 
 <body>
 
 <div id="topbar">
-  <div id="logo">RADAR CMD</div>
-  <div id="topbar-right">
-    <div id="zulu">Zulu: --:--:--</div>
-    <div id="local">Local: --:--:--</div>
-  </div>
+  <b>18 : 06 : 31</b>
+  <span style="margin-left:10px;">Settings</span>
+  <span style="margin-left:10px;">AirSitu</span>
+  <span style="margin-left:10px;">Info</span>
+  <div class="right">ATC SURVEILLANCE</div>
 </div>
 
-<div id="container">
-
-  <div id="center">
-    <canvas id="radar"></canvas>
-  </div>
-
-  <div id="rightbar">
-    <div class="panel">
-      <h3>UNIT STATUS</h3>
-      <div id="unitInfo" class="muted">
-        Please Select A Designated Unit.
-      </div>
-    </div>
-  </div>
-
-</div>
+<canvas id="c"></canvas>
 
 <script>
-/* ================= TIME ================= */
-
-function updateTime() {
-  const now = new Date();
-  document.getElementById("local").textContent =
-    "Local: " + now.toLocaleTimeString();
-  document.getElementById("zulu").textContent =
-    "Zulu: " + now.toUTCString().slice(17, 25);
-}
-setInterval(updateTime, 1000);
-updateTime();
-
-/* ================= CANVAS ================= */
-
-const canvas = document.getElementById("radar");
+const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
-function resize() {
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
+function resize(){
+  canvas.width = innerWidth;
+  canvas.height = innerHeight - 28;
 }
-window.addEventListener("resize", resize);
+addEventListener("resize", resize);
 resize();
-
-/* ================= RADAR OVERLAY ================= */
-
-function drawOverlay() {
-  const cx = canvas.width / 2;
-  const cy = canvas.height / 2;
-
-  ctx.strokeStyle = "#163a4a";
-  ctx.lineWidth = 1;
-
-  for (let r = 80; r < Math.min(cx, cy); r += 80) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  for (let a = 0; a < 360; a += 30) {
-    const rad = a * Math.PI / 180;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(rad) * cx, cy + Math.sin(rad) * cy);
-    ctx.stroke();
-  }
-}
 
 /* ================= AIRCRAFT ================= */
 
-const SHAPES = ["circle", "square", "diamond", "triangle", "rect"];
-const TYPES = ["Passenger", "Cargo", "Friendly Military", "Foreign Military"];
+const TYPES = [
+  {name:"Passenger", color:"#00ff66", shape:"diamond"},
+  {name:"Cargo", color:"#00ffff", shape:"rect"},
+  {name:"Friendly", color:"#ffd700", shape:"triangle"},
+  {name:"Foreign", color:"#ffffff", shape:"square"}
+];
 
-const aircraft = [];
-let selected = null;
+function wp(x,y){ return {x,y}; }
 
-function spawnAircraft() {
+function spawn(){
+  const t = TYPES[Math.floor(Math.random()*TYPES.length)];
   return {
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    vx: (Math.random() - 0.5) * 0.08,
-    vy: (Math.random() - 0.5) * 0.08,
-    shape: SHAPES[Math.floor(Math.random() * SHAPES.length)],
-    type: TYPES[Math.floor(Math.random() * TYPES.length)],
-    altitude: Math.floor(8000 + Math.random() * 30000),
-    speed: Math.floor(350 + Math.random() * 200)
+    type:t,
+    x: Math.random()*canvas.width,
+    y: Math.random()*canvas.height,
+    route:[
+      wp(Math.random()*canvas.width,Math.random()*canvas.height),
+      wp(Math.random()*canvas.width,Math.random()*canvas.height),
+      wp(Math.random()*canvas.width,Math.random()*canvas.height),
+      wp(Math.random()*canvas.width,Math.random()*canvas.height)
+    ],
+    wpIndex:0,
+    speed:5,
+    callsign: randomCallsign(),
+    alt: Math.floor(240+Math.random()*120),
+    cfl: Math.floor(300+Math.random()*80)
   };
 }
 
-for (let i = 0; i < 14; i++) aircraft.push(spawnAircraft());
-
-canvas.addEventListener("click", e => {
-  const r = canvas.getBoundingClientRect();
-  const mx = e.clientX - r.left;
-  const my = e.clientY - r.top;
-
-  selected = null;
-
-  aircraft.forEach(a => {
-    if (Math.hypot(mx - a.x, my - a.y) < 8) selected = a;
-  });
-
-  updatePanel();
-});
-
-function updatePanel() {
-  const panel = document.getElementById("unitInfo");
-
-  if (!selected) {
-    panel.textContent = "Please Select A Designated Unit.";
-    panel.className = "muted";
-    return;
-  }
-
-  panel.className = "";
-  panel.innerHTML = `
-    Type: <span class="value">${selected.type}</span><br>
-    Altitude: <span class="value">${selected.altitude} ft</span><br>
-    Speed: <span class="value">${selected.speed} kts</span>
-  `;
+function randomCallsign(){
+  const a=["AFR","BAW","SWR","DLH","EZY","AAL","ANA"];
+  return a[Math.floor(Math.random()*a.length)] + Math.floor(100+Math.random()*900);
 }
 
-/* ================= DRAW SHAPES ================= */
+const aircraft = [];
+for(let i=0;i<18;i++) aircraft.push(spawn());
 
-function drawShape(a) {
+/* ================= DRAW ================= */
+
+function drawSymbol(a){
+  ctx.strokeStyle = a.type.color;
+  ctx.lineWidth = 1;
   ctx.beginPath();
 
-  switch (a.shape) {
-    case "circle":
-      ctx.arc(a.x, a.y, 4, 0, Math.PI * 2);
-      break;
-    case "square":
-      ctx.rect(a.x - 4, a.y - 4, 8, 8);
-      break;
+  switch(a.type.shape){
     case "diamond":
-      ctx.moveTo(a.x, a.y - 5);
-      ctx.lineTo(a.x + 5, a.y);
-      ctx.lineTo(a.x, a.y + 5);
-      ctx.lineTo(a.x - 5, a.y);
+      ctx.moveTo(a.x,a.y-6);
+      ctx.lineTo(a.x+6,a.y);
+      ctx.lineTo(a.x,a.y+6);
+      ctx.lineTo(a.x-6,a.y);
       ctx.closePath();
       break;
+    case "square":
+      ctx.rect(a.x-5,a.y-5,10,10);
+      break;
     case "triangle":
-      ctx.moveTo(a.x, a.y - 5);
-      ctx.lineTo(a.x + 5, a.y + 5);
-      ctx.lineTo(a.x - 5, a.y + 5);
+      ctx.moveTo(a.x,a.y-6);
+      ctx.lineTo(a.x+6,a.y+6);
+      ctx.lineTo(a.x-6,a.y+6);
       ctx.closePath();
       break;
     case "rect":
-      ctx.rect(a.x - 6, a.y - 3, 12, 6);
+      ctx.rect(a.x-7,a.y-4,14,8);
       break;
   }
-
-  ctx.fill();
+  ctx.stroke();
 }
 
-/* ================= LOOP ================= */
+function drawLabel(a){
+  ctx.fillStyle = a.type.color;
+  ctx.font = "11px monospace";
+  ctx.fillText(a.callsign, a.x+8, a.y-8);
+  ctx.fillText(`S F${a.alt} ↑ CFL`, a.x+8, a.y+4);
+}
+
+/* ================= UPDATE ================= */
 
 let last = performance.now();
 
-function loop(now) {
-  const dt = (now - last) / 1000;
+function update(now){
+  if(now-last < 900) return requestAnimationFrame(update);
   last = now;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  drawOverlay();
+  aircraft.forEach(a=>{
+    const wp = a.route[a.wpIndex];
+    const dx = wp.x - a.x;
+    const dy = wp.y - a.y;
+    const d = Math.hypot(dx,dy);
 
-  aircraft.forEach(a => {
-    /* slow + jitter */
-    if (Math.random() < 0.15) {
-      a.x += (Math.random() - 0.5) * 2;
-      a.y += (Math.random() - 0.5) * 2;
+    if(d < 10){
+      a.wpIndex = (a.wpIndex+1) % a.route.length;
+    } else {
+      a.x += dx/d * a.speed;
+      a.y += dy/d * a.speed;
     }
 
-    a.x += a.vx * dt * 60 * 5;
-    a.y += a.vy * dt * 60 * 5;
+    /* heading vector */
+    ctx.strokeStyle = a.type.color;
+    ctx.beginPath();
+    ctx.moveTo(a.x,a.y);
+    ctx.lineTo(a.x + dx/d*25, a.y + dy/d*25);
+    ctx.stroke();
 
-    if (a.x < 0) a.x = canvas.width;
-    if (a.y < 0) a.y = canvas.height;
-    if (a.x > canvas.width) a.x = 0;
-    if (a.y > canvas.height) a.y = 0;
-
-    ctx.fillStyle = a === selected ? "#ffd966" : "#9fdcff";
-    drawShape(a);
+    drawSymbol(a);
+    drawLabel(a);
   });
 
-  requestAnimationFrame(loop);
+  requestAnimationFrame(update);
 }
 
-requestAnimationFrame(loop);
+requestAnimationFrame(update);
 </script>
 
 </body>
