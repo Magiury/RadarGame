@@ -55,13 +55,13 @@ body {
 
 #mainView {
   flex: 1;
-  background: #050a0d; /* PLAIN BACKGROUND */
+  background: #050a0d;
 }
 
 canvas {
   width: 100%;
   height: 100%;
-  background: #050a0d; /* NO RADAR ART */
+  background: #050a0d;
 }
 
 /* ================= BOTTOM ================= */
@@ -100,16 +100,15 @@ canvas {
 
 .value { color: #9fdcff; }
 .muted { color: #888; }
+.base { color: #ff6666; }
 
 </style>
 </head>
 
 <body>
 
-<!-- ================= TOP BAR ================= -->
 <div id="topbar">
   <div id="logo">RADAR CMD</div>
-
   <div id="topbar-right">
     <div id="zulu">Zulu: --:--:--</div>
     <div id="local">Local: --:--:--</div>
@@ -117,7 +116,6 @@ canvas {
   </div>
 </div>
 
-<!-- ================= MAIN ================= -->
 <div id="container">
 
   <div id="center">
@@ -125,7 +123,7 @@ canvas {
       <canvas id="radar"></canvas>
     </div>
     <div id="bottombar">
-      Message Log | Scroll to Zoom | Click Aircraft to Select
+      Scroll to Zoom In | Click Aircraft to Select
     </div>
   </div>
 
@@ -141,14 +139,12 @@ canvas {
 </div>
 
 <script>
-
 /* ================= TIME ================= */
 
 function updateTime() {
   const now = new Date();
   document.getElementById("local").textContent =
     "Local: " + now.toLocaleTimeString();
-
   document.getElementById("zulu").textContent =
     "Zulu: " + now.toUTCString().slice(17, 25);
 }
@@ -167,19 +163,59 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 
-/* ================= ZOOM ================= */
+/* ================= ZOOM (100%+) ================= */
 
 let zoom = 1;
 
 canvas.addEventListener("wheel", e => {
   e.preventDefault();
   zoom += e.deltaY * -0.001;
-  zoom = Math.min(Math.max(zoom, 0.5), 3);
+  zoom = Math.min(Math.max(zoom, 1), 3);
   document.getElementById("zoomInfo").textContent =
     "Zoom: " + Math.round(zoom * 100) + "%";
 });
 
-/* ================= AIRCRAFT (RANDOM WALK) ================= */
+/* ================= MAP IMAGE ================= */
+
+const mapImg = new Image();
+mapImg.src = "map.png";
+
+let landPixels = [];
+let bases = [];
+
+mapImg.onload = () => {
+  detectLand();
+  placeBases();
+};
+
+/* detect non-transparent pixels */
+function detectLand() {
+  const temp = document.createElement("canvas");
+  temp.width = mapImg.width;
+  temp.height = mapImg.height;
+  const tctx = temp.getContext("2d");
+  tctx.drawImage(mapImg, 0, 0);
+
+  const img = tctx.getImageData(0, 0, temp.width, temp.height).data;
+
+  landPixels = [];
+  for (let y = 0; y < temp.height; y += 4) {
+    for (let x = 0; x < temp.width; x += 4) {
+      const a = img[(y * temp.width + x) * 4 + 3];
+      if (a > 0) landPixels.push({ x, y });
+    }
+  }
+}
+
+/* random bases on land */
+function placeBases() {
+  bases = [];
+  for (let i = 0; i < 3; i++) {
+    bases.push(landPixels[Math.floor(Math.random() * landPixels.length)]);
+  }
+}
+
+/* ================= AIRCRAFT ================= */
 
 const aircraft = [];
 let selected = null;
@@ -188,8 +224,8 @@ function spawnAircraft() {
   return {
     x: Math.random() * canvas.width,
     y: Math.random() * canvas.height,
-    vx: (Math.random() - 0.5) * 0.8,
-    vy: (Math.random() - 0.5) * 0.8,
+    vx: (Math.random() - 0.5) * 1.2,
+    vy: (Math.random() - 0.5) * 1.2,
     altitude: Math.floor(8000 + Math.random() * 25000),
     speed: Math.floor(250 + Math.random() * 250),
     type: Math.random() > 0.5 ? "Civilian" : "Military"
@@ -198,69 +234,43 @@ function spawnAircraft() {
 
 for (let i = 0; i < 10; i++) aircraft.push(spawnAircraft());
 
-canvas.addEventListener("click", e => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-
-  selected = null;
-
-  aircraft.forEach(a => {
-    const x = canvas.width / 2 + (a.x - canvas.width / 2) * zoom;
-    const y = canvas.height / 2 + (a.y - canvas.height / 2) * zoom;
-
-    if (Math.hypot(mx - x, my - y) < 6) selected = a;
-  });
-
-  updatePanel();
-});
-
-/* ================= PANEL ================= */
-
-function updatePanel() {
-  const panel = document.getElementById("unitInfo");
-
-  if (!selected) {
-    panel.textContent = "Please Select A Designated Unit.";
-    panel.className = "muted";
-    return;
-  }
-
-  panel.className = "";
-  panel.innerHTML = `
-    Type: <span class="value">${selected.type}</span><br>
-    Altitude: <span class="value">${selected.altitude} ft</span><br>
-    Speed: <span class="value">${selected.speed} kts</span>
-  `;
-}
-
 /* ================= LOOP ================= */
 
 function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  aircraft.forEach(a => {
+  const w = canvas.width * zoom;
+  const h = canvas.height * zoom;
+  ctx.drawImage(mapImg, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
 
-    /* random drift */
-    if (Math.random() < 0.02) {
-      a.vx += (Math.random() - 0.5) * 0.2;
-      a.vy += (Math.random() - 0.5) * 0.2;
+  /* draw bases */
+  bases.forEach(b => {
+    const x = (b.x / mapImg.width) * w + (canvas.width - w) / 2;
+    const y = (b.y / mapImg.height) * h + (canvas.height - h) / 2;
+    ctx.fillStyle = "#ff5555";
+    ctx.fillRect(x - 3, y - 3, 6, 6);
+  });
+
+  /* aircraft random walk */
+  aircraft.forEach(a => {
+    if (Math.random() < 0.03) {
+      a.vx += (Math.random() - 0.5) * 0.4;
+      a.vy += (Math.random() - 0.5) * 0.4;
     }
 
     a.x += a.vx;
     a.y += a.vy;
 
-    /* wrap edges */
     if (a.x < 0) a.x = canvas.width;
     if (a.y < 0) a.y = canvas.height;
     if (a.x > canvas.width) a.x = 0;
     if (a.y > canvas.height) a.y = 0;
 
-    const drawX = canvas.width / 2 + (a.x - canvas.width / 2) * zoom;
-    const drawY = canvas.height / 2 + (a.y - canvas.height / 2) * zoom;
+    const dx = canvas.width / 2 + (a.x - canvas.width / 2) * zoom;
+    const dy = canvas.height / 2 + (a.y - canvas.height / 2) * zoom;
 
     ctx.beginPath();
-    ctx.arc(drawX, drawY, 4, 0, Math.PI * 2);
+    ctx.arc(dx, dy, 4, 0, Math.PI * 2);
     ctx.fillStyle = a === selected ? "#ffcc00" : "#7fdcff";
     ctx.fill();
   });
@@ -269,7 +279,6 @@ function loop() {
 }
 
 loop();
-
 </script>
 
 </body>
