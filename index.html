@@ -124,7 +124,7 @@ const base={
   r3:80
 };
 
-/* ================= AIRCRAFT ================= */
+/* ================= AIRCRAFT (GIỮ NGUYÊN) ================= */
 const TYPES=[
  {name:"Passenger",color:"#00ff66",shape:"diamond",side:"Civilian",ew:false},
  {name:"Cargo",color:"#00ffff",shape:"rect",side:"Civilian",ew:false},
@@ -162,7 +162,7 @@ function spawn(){
 const aircraft=[];
 for(let i=0;i<45;i++) aircraft.push(spawn());
 
-/* ================= DRAW ================= */
+/* ================= DRAW ICON (GIỮ NGUYÊN) ================= */
 const ICON_SCALE=0.65;
 
 function drawSymbol(a){
@@ -196,6 +196,32 @@ function drawLabel(a){
  ctx.font="11px monospace";
  ctx.fillText(a.callsign,a.x+8,a.y-8);
  ctx.fillText(`CONF ${Math.floor(a.confidence)}%`,a.x+8,a.y+4);
+}
+
+/* ================= BASE ICON (NEW – CHỈ ADD) ================= */
+function drawBase(){
+ ctx.save();
+ ctx.translate(base.x,base.y);
+
+ ctx.strokeStyle="rgba(0,255,120,0.9)";
+ ctx.lineWidth=1;
+
+ ctx.beginPath();
+ ctx.arc(0,0,6,0,Math.PI*2);
+ ctx.stroke();
+
+ ctx.fillStyle="rgba(0,255,120,0.9)";
+ ctx.beginPath();
+ ctx.arc(0,0,2,0,Math.PI*2);
+ ctx.fill();
+
+ ctx.strokeStyle="rgba(0,255,120,0.6)";
+ ctx.beginPath();
+ ctx.moveTo(-12,0); ctx.lineTo(12,0);
+ ctx.moveTo(0,-12); ctx.lineTo(0,12);
+ ctx.stroke();
+
+ ctx.restore();
 }
 
 /* ================= SELECT ================= */
@@ -260,11 +286,29 @@ function update(now){
 
  ctx.clearRect(0,0,canvas.width,canvas.height);
 
- // base rings
- ctx.strokeStyle="#3355ff";
- [base.r1,base.r2,base.r3].forEach(r=>{
-  ctx.beginPath();ctx.arc(base.x,base.y,r,0,Math.PI*2);ctx.stroke();
+ /* ===== RADAR RINGS (GREEN PHOSPHOR STYLE – ONLY CHANGE) ===== */
+ ctx.save();
+ ctx.translate(base.x,base.y);
+
+ const rings=[
+  {r:base.r1,a:0.25},
+  {r:base.r2,a:0.35},
+  {r:base.r3,a:0.5}
+ ];
+
+ rings.forEach(rg=>{
+  ctx.strokeStyle=`rgba(0,255,120,${rg.a})`;
+  ctx.lineWidth=1;
+  ctx.setLineDash([6,6]);
+  ctx.beginPath();
+  ctx.arc(0,0,rg.r,0,Math.PI*2);
+  ctx.stroke();
  });
+
+ ctx.setLineDash([]);
+ ctx.restore();
+
+ drawBase();
 
  aircraft.forEach(a=>{
   const wp=a.route[a.wpIndex];
@@ -290,7 +334,9 @@ function update(now){
 
   if(a===selected){
    ctx.strokeStyle="#ff4444";
-   ctx.beginPath();ctx.arc(a.x,a.y,10,0,Math.PI*2);ctx.stroke();
+   ctx.beginPath();
+   ctx.arc(a.x,a.y,10,0,Math.PI*2);
+   ctx.stroke();
   }
  });
 
