@@ -3,15 +3,237 @@
 <head>
   <meta charset="UTF-8">
   <title>Radar Command</title>
-  <link rel="stylesheet" href="style.css">
+
+  <!-- ========================= -->
+  <!--           CSS             -->
+  <!-- ========================= -->
+  <style>
+
+    body {
+      margin: 0;
+      background: #020b10;
+      color: #7fdcff;
+      font-family: monospace;
+    }
+
+    button {
+      background: transparent;
+      color: #7fdcff;
+      border: 1px solid #7fdcff;
+      padding: 10px 20px;
+      font-family: monospace;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #7fdcff;
+      color: #020b10;
+    }
+
+    /* ---------- LOGIN ---------- */
+
+    #login {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .login-box {
+      border: 1px solid #0a2a3a;
+      padding: 30px 40px;
+      background: #041a24;
+      text-align: center;
+    }
+
+    .login-box h1 {
+      margin-top: 0;
+      color: #9ff;
+    }
+
+    /* ---------- GAME ---------- */
+
+    #game {
+      display: none;
+      height: 100vh;
+    }
+
+    canvas {
+      background: radial-gradient(circle, #041a24 0%, #020b10 70%);
+    }
+
+    #info {
+      width: 220px;
+      padding: 10px;
+      border-left: 1px solid #0a2a3a;
+    }
+
+    #info h3 {
+      margin-top: 0;
+      color: #9ff;
+    }
+
+  </style>
 </head>
+
 <body>
-  <canvas id="radar" width="600" height="600"></canvas>
-  <div id="info">
-    <h3>TRACK DATA</h3>
-    <div id="trackInfo">No track selected</div>
+
+  <!-- ========================= -->
+  <!--          LOGIN            -->
+  <!-- ========================= -->
+  <div id="login">
+    <div class="login-box">
+      <h1>RADAR COMMAND</h1>
+      <p>Early Warning / Air Defense Console</p>
+      <button onclick="enterDuty()">ENTER DUTY STATION</button>
+    </div>
   </div>
 
-  <script src="game.js"></script>
+  <!-- ========================= -->
+  <!--           GAME            -->
+  <!-- ========================= -->
+  <div id="game">
+    <canvas id="radar" width="600" height="600"></canvas>
+
+    <div id="info">
+      <h3>TRACK DATA</h3>
+      <div id="trackInfo">No track selected</div>
+    </div>
+  </div>
+
+  <!-- ========================= -->
+  <!--        JAVASCRIPT         -->
+  <!-- ========================= -->
+  <script>
+
+    /* ---------- LOGIN LOGIC ---------- */
+
+    function enterDuty() {
+      document.getElementById("login").style.display = "none";
+      document.getElementById("game").style.display = "flex";
+      startGame();
+    }
+
+    /* ---------- GAME SETUP ---------- */
+
+    let canvas, ctx, info;
+    let tracks = [];
+    let selectedTrack = null;
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    class Track {
+      constructor() {
+        this.x = rand(0, 600);
+        this.y = rand(0, 600);
+
+        this.vx = rand(-0.3, 0.3);
+        this.vy = rand(-0.3, 0.3);
+
+        this.altitude = rand(8000, 36000);
+        this.speed = rand(200, 550);
+
+        this.trueType = Math.random() < 0.7 ? "CIVILIAN" : "MILITARY";
+        this.transponder = this.trueType === "CIVILIAN";
+
+        this.confidence = rand(20, 50);
+        this.ew = this.trueType === "MILITARY" ? rand(0.2, 0.6) : 0;
+
+        this.visible = true;
+      }
+
+      update() {
+
+        this.x = (this.x + this.vx + 600) % 600;
+        this.y = (this.y + this.vy + 600) % 600;
+
+        /* --- EW flicker --- */
+        if (this.ew > 0 && Math.random() < 0.02) {
+          this.visible = false;
+          setTimeout(() => this.visible = true, rand(500, 1200));
+        }
+
+        /* --- Confidence logic --- */
+        let delta = 0;
+
+        delta += this.transponder ? 0.05 : -0.1;
+        delta += Math.abs(this.vx) < 0.2 ? 0.03 : -0.05;
+        delta -= this.ew * 0.1;
+
+        this.confidence += delta;
+
+        let cap = this.trueType === "MILITARY" ? 70 : 100;
+        this.confidence = Math.max(0, Math.min(this.confidence, cap));
+      }
+
+      draw() {
+        if (!this.visible) return;
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = "#7fdcff";
+        ctx.fill();
+      }
+    }
+
+    function startGame() {
+
+      canvas = document.getElementById("radar");
+      ctx = canvas.getContext("2d");
+      info = document.getElementById("trackInfo");
+
+      for (let i = 0; i < 8; i++) {
+        tracks.push(new Track());
+      }
+
+      canvas.addEventListener("click", selectTrack);
+
+      requestAnimationFrame(loop);
+    }
+
+    function selectTrack(e) {
+
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      selectedTrack = tracks.find(t =>
+        Math.hypot(t.x - mx, t.y - my) < 6
+      );
+    }
+
+    function loop() {
+
+      ctx.clearRect(0, 0, 600, 600);
+
+      /* --- Radar circles --- */
+      ctx.strokeStyle = "#0a2a3a";
+      for (let r = 50; r <= 300; r += 50) {
+        ctx.beginPath();
+        ctx.arc(300, 300, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      tracks.forEach(t => {
+        t.update();
+        t.draw();
+      });
+
+      if (selectedTrack) {
+        info.innerHTML = `
+          Altitude: ${selectedTrack.visible ? selectedTrack.altitude.toFixed(0) : "—"} ft<br>
+          Speed: ${selectedTrack.visible ? selectedTrack.speed.toFixed(0) : "—"} kts<br>
+          Transponder: ${selectedTrack.transponder ? "ON" : "OFF"}<br>
+          Identification Confidence: ${selectedTrack.confidence.toFixed(1)}%
+        `;
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+  </script>
+
 </body>
 </html>
