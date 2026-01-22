@@ -13,7 +13,6 @@ html,body{
   color:#9f9;
 }
 
-/* ===== TOP BAR ===== */
 #topbar{
   height:28px;
   background:#8fa6b8;
@@ -24,7 +23,6 @@ html,body{
   font-size:13px;
 }
 
-/* ===== LAYOUT ===== */
 #layout{
   display:grid;
   grid-template-columns: 56px 1fr 260px;
@@ -32,17 +30,13 @@ html,body{
   height: calc(100vh - 28px);
 }
 
-/* ===== LEFT BAR ===== */
 #leftbar{
   grid-row:1 / span 2;
   background:#111;
   border-right:1px solid #333;
 }
 
-/* ===== MAIN ===== */
-#main{
-  position:relative;
-}
+#main{ position:relative; }
 
 canvas{
   display:block;
@@ -50,7 +44,6 @@ canvas{
   height:100%;
 }
 
-/* ===== RIGHT PANEL ===== */
 #rightbar{
   background:#111;
   border-left:1px solid #333;
@@ -72,7 +65,6 @@ canvas{
 .value{ color:#9f9; }
 .muted{ color:#666; }
 
-/* ===== BOTTOM BAR ===== */
 #bottombar{
   grid-column:2 / span 2;
   background:#111;
@@ -88,15 +80,11 @@ canvas{
 <body>
 
 <div id="topbar">
-  <b>18 : 06 : 31</b>
-  <span style="margin-left:10px;">Settings</span>
-  <span style="margin-left:10px;">AirSitu</span>
-  <span style="margin-left:10px;">Info</span>
+  <b>Zulu</b>
   <div style="margin-left:auto;">ATC SURVEILLANCE</div>
 </div>
 
 <div id="layout">
-
   <div id="leftbar"></div>
 
   <div id="main">
@@ -106,186 +94,208 @@ canvas{
   <div id="rightbar">
     <div class="panel">
       <h3>UNIT STATUS</h3>
-      <div id="unitPanel" class="muted">
-        Please Select A Designated Unit.
-      </div>
+      <div id="unitPanel" class="muted">Please Select A Designated Unit.</div>
     </div>
   </div>
 
   <div id="bottombar">
-    Message Log · Radar Sweep ~1s
+    I = Intercept | EW active | Confidence based ID
   </div>
-
 </div>
 
 <script>
 /* ================= CANVAS ================= */
-
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d");
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
 
 function resize(){
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
+  canvas.width=canvas.clientWidth;
+  canvas.height=canvas.clientHeight;
 }
-addEventListener("resize", resize);
+addEventListener("resize",resize);
 resize();
 
-/* ================= AIRCRAFT (GIỮ NGUYÊN) ================= */
+/* ================= BASE ================= */
+const base={
+  x:canvas.width*(0.3+Math.random()*0.4),
+  y:canvas.height*(0.3+Math.random()*0.4),
+  r1:260,
+  r2:160,
+  r3:80
+};
 
-const TYPES = [
-  {name:"Passenger", color:"#00ff66", shape:"diamond", side:"Civilian"},
-  {name:"Cargo", color:"#00ffff", shape:"rect", side:"Civilian"},
-  {name:"Military", color:"#ffd700", shape:"triangle", side:"Friendly"},
-  {name:"Military", color:"#ffffff", shape:"square", side:"Foreign"}
+/* ================= AIRCRAFT ================= */
+const TYPES=[
+ {name:"Passenger",color:"#00ff66",shape:"diamond",side:"Civilian",ew:false},
+ {name:"Cargo",color:"#00ffff",shape:"rect",side:"Civilian",ew:false},
+ {name:"Military",color:"#ffd700",shape:"triangle",side:"Friendly",ew:true},
+ {name:"Military",color:"#ffffff",shape:"square",side:"Foreign",ew:true}
 ];
 
-function wp(x,y){ return {x,y}; }
+function wp(x,y){return{x,y};}
 
 function randomCallsign(){
-  const a=["AFR","BAW","SWR","DLH","EZY","AAL","ANA"];
-  return a[Math.floor(Math.random()*a.length)] + Math.floor(100+Math.random()*900);
+ const a=["AFR","BAW","SWR","DLH","EZY","AAL","ANA"];
+ return a[Math.floor(Math.random()*a.length)]+Math.floor(100+Math.random()*900);
 }
 
 function spawn(){
-  const t = TYPES[Math.floor(Math.random()*TYPES.length)];
-  return {
-    type:t,
-    x: Math.random()*canvas.width,
-    y: Math.random()*canvas.height,
-    route:[
-      wp(Math.random()*canvas.width,Math.random()*canvas.height),
-      wp(Math.random()*canvas.width,Math.random()*canvas.height),
-      wp(Math.random()*canvas.width,Math.random()*canvas.height),
-      wp(Math.random()*canvas.width,Math.random()*canvas.height)
-    ],
-    wpIndex:0,
-    speed:2,
-    callsign: randomCallsign(),
-    alt: Math.floor(240+Math.random()*120),
-    cfl: Math.floor(300+Math.random()*80),
-    spd: Math.floor(350+Math.random()*150)
-  };
+ const t=TYPES[Math.floor(Math.random()*TYPES.length)];
+ return{
+  type:t,
+  x:Math.random()*canvas.width,
+  y:Math.random()*canvas.height,
+  route:[wp(Math.random()*canvas.width,Math.random()*canvas.height),
+         wp(Math.random()*canvas.width,Math.random()*canvas.height),
+         wp(Math.random()*canvas.width,Math.random()*canvas.height)],
+  wpIndex:0,
+  speed:1.8,
+  callsign:randomCallsign(),
+  alt:Math.floor(240+Math.random()*120),
+  spd:Math.floor(350+Math.random()*150),
+  detectLevel:0,
+  confidence:0,
+  confirmed:false
+ };
 }
 
 const aircraft=[];
-for(let i=0;i<18;i++) aircraft.push(spawn());
+for(let i=0;i<45;i++) aircraft.push(spawn());
 
-/* ================= DRAW (GIỮ NGUYÊN ICON) ================= */
+/* ================= DRAW ================= */
+const ICON_SCALE=0.65;
 
 function drawSymbol(a){
-  ctx.strokeStyle = a.type.color;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-
-  switch(a.type.shape){
-    case "diamond":
-      ctx.moveTo(a.x,a.y-6);
-      ctx.lineTo(a.x+6,a.y);
-      ctx.lineTo(a.x,a.y+6);
-      ctx.lineTo(a.x-6,a.y);
-      ctx.closePath();
-      break;
-    case "square":
-      ctx.rect(a.x-5,a.y-5,10,10);
-      break;
-    case "triangle":
-      ctx.moveTo(a.x,a.y-6);
-      ctx.lineTo(a.x+6,a.y+6);
-      ctx.lineTo(a.x-6,a.y+6);
-      ctx.closePath();
-      break;
-    case "rect":
-      ctx.rect(a.x-7,a.y-4,14,8);
-      break;
-  }
-  ctx.stroke();
+ ctx.strokeStyle=a.type.color;
+ ctx.lineWidth=1;
+ const s=6*ICON_SCALE;
+ ctx.beginPath();
+ switch(a.type.shape){
+  case"diamond":
+   ctx.moveTo(a.x,a.y-s);
+   ctx.lineTo(a.x+s,a.y);
+   ctx.lineTo(a.x,a.y+s);
+   ctx.lineTo(a.x-s,a.y);
+   ctx.closePath();break;
+  case"square":
+   ctx.rect(a.x-5*ICON_SCALE,a.y-5*ICON_SCALE,10*ICON_SCALE,10*ICON_SCALE);break;
+  case"triangle":
+   ctx.moveTo(a.x,a.y-s);
+   ctx.lineTo(a.x+s,a.y+s);
+   ctx.lineTo(a.x-s,a.y+s);
+   ctx.closePath();break;
+  case"rect":
+   ctx.rect(a.x-7*ICON_SCALE,a.y-4*ICON_SCALE,14*ICON_SCALE,8*ICON_SCALE);break;
+ }
+ ctx.stroke();
 }
 
 function drawLabel(a){
-  ctx.fillStyle = a.type.color;
-  ctx.font = "11px monospace";
-  ctx.fillText(a.callsign, a.x+8, a.y-8);
-  ctx.fillText(`S F${a.alt} ↑ CFL`, a.x+8, a.y+4);
+ if(a.detectLevel<2) return;
+ ctx.fillStyle=a.type.color;
+ ctx.font="11px monospace";
+ ctx.fillText(a.callsign,a.x+8,a.y-8);
+ ctx.fillText(`CONF ${Math.floor(a.confidence)}%`,a.x+8,a.y+4);
 }
 
-/* ================= CLICK / SELECT (ADD) ================= */
-
+/* ================= SELECT ================= */
 let selected=null;
 
-canvas.addEventListener("click",e=>{
-  const r=canvas.getBoundingClientRect();
-  const mx=e.clientX-r.left;
-  const my=e.clientY-r.top;
-  selected=null;
+canvas.onclick=e=>{
+ const r=canvas.getBoundingClientRect();
+ const mx=e.clientX-r.left;
+ const my=e.clientY-r.top;
+ selected=null;
+ aircraft.forEach(a=>{
+  if(Math.hypot(mx-a.x,my-a.y)<8) selected=a;
+ });
+ updatePanel();
+};
 
-  aircraft.forEach(a=>{
-    if(Math.hypot(mx-a.x,my-a.y)<8) selected=a;
-  });
+/* ================= INTERCEPT ================= */
+document.addEventListener("keydown",e=>{
+ if(e.key==="i"&&selected){
+  selected.confirmed=true;
+  selected.confidence=100;
   updatePanel();
+ }
 });
 
+/* ================= PANEL ================= */
 function updatePanel(){
-  const p=document.getElementById("unitPanel");
-  if(!selected){
-    p.className="muted";
-    p.textContent="Please Select A Designated Unit";
-    return;
-  }
-  p.className="";
+ const p=document.getElementById("unitPanel");
+ if(!selected){p.className="muted";p.textContent="Please Select A Designated Unit.";return;}
+
+ if(selected.detectLevel===1){
+  p.innerHTML=`Status: <span class="value">UNIDENTIFIED</span>`;
+  return;
+ }
+
+ if(selected.detectLevel===2&&!selected.confirmed){
   p.innerHTML=`
-    Callsign: <span class="value">${selected.callsign}</span><br>
-    Type: <span class="value">${selected.type.name}</span><br>
-    Allegiance: <span class="value">${selected.type.side}</span><br>
-    Speed: <span class="value">${selected.spd} kts</span><br>
-    Altitude: <span class="value">FL${selected.alt}</span><br>
-    Waypoint: <span class="value">${selected.wpIndex+1}/${selected.route.length}</span>
+   Type: <span class="value">${selected.type.name}</span><br>
+   Category: <span class="value">${selected.type.side}</span><br>
+   Confidence: <span class="value">${Math.floor(selected.confidence)}%</span><br>
+   Status: <span class="value">MONITORED</span>
   `;
+  return;
+ }
+
+ if(selected.confirmed){
+  p.innerHTML=`
+   Callsign: <span class="value">${selected.callsign}</span><br>
+   Type: <span class="value">${selected.type.name}</span><br>
+   Allegiance: <span class="value">${selected.type.side}</span><br>
+   Status: <span class="value">CONFIRMED</span>
+  `;
+ }
 }
 
 /* ================= LOOP ================= */
-
 let last=performance.now();
 
 function update(now){
-  if(now-last<700) return requestAnimationFrame(update);
-  last=now;
+ if(now-last<600) return requestAnimationFrame(update);
+ last=now;
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+ ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  aircraft.forEach(a=>{
-    const wp=a.route[a.wpIndex];
-    const dx=wp.x-a.x;
-    const dy=wp.y-a.y;
-    const d=Math.hypot(dx,dy);
+ // base rings
+ ctx.strokeStyle="#3355ff";
+ [base.r1,base.r2,base.r3].forEach(r=>{
+  ctx.beginPath();ctx.arc(base.x,base.y,r,0,Math.PI*2);ctx.stroke();
+ });
 
-    if(d<10){
-      a.wpIndex=(a.wpIndex+1)%a.route.length;
-    }else{
-      a.x+=dx/d*a.speed;
-      a.y+=dy/d*a.speed;
-    }
+ aircraft.forEach(a=>{
+  const wp=a.route[a.wpIndex];
+  let dx=wp.x-a.x, dy=wp.y-a.y;
+  let d=Math.hypot(dx,dy);
+  if(d<10)a.wpIndex=(a.wpIndex+1)%a.route.length;
+  else{
+   if(a.type.ew){dx+=Math.random()*6-3;dy+=Math.random()*6-3;}
+   a.x+=dx/d*a.speed;
+   a.y+=dy/d*a.speed;
+  }
 
-    /* heading vector (GIỮ NGUYÊN) */
-    ctx.strokeStyle=a.type.color;
-    ctx.beginPath();
-    ctx.moveTo(a.x,a.y);
-    ctx.lineTo(a.x+dx/d*25,a.y+dy/d*25);
-    ctx.stroke();
+  const dist=Math.hypot(a.x-base.x,a.y-base.y);
+  a.detectLevel=dist<base.r2?2:dist<base.r1?1:0;
 
-    /* highlight nếu selected */
-    if(a===selected){
-      ctx.strokeStyle="#ff4444";
-      ctx.beginPath();
-      ctx.arc(a.x,a.y,10,0,Math.PI*2);
-      ctx.stroke();
-    }
+  if(a.detectLevel===2&&!a.confirmed){
+   a.confidence+=a.type.ew?Math.random()*1.5:Math.random()*3;
+   if(a.type.ew)a.confidence=Math.min(a.confidence,70);
+  }
 
-    drawSymbol(a);
-    drawLabel(a);
-  });
+  drawSymbol(a);
+  drawLabel(a);
 
-  requestAnimationFrame(update);
+  if(a===selected){
+   ctx.strokeStyle="#ff4444";
+   ctx.beginPath();ctx.arc(a.x,a.y,10,0,Math.PI*2);ctx.stroke();
+  }
+ });
+
+ updatePanel();
+ requestAnimationFrame(update);
 }
 
 requestAnimationFrame(update);
