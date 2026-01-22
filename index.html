@@ -160,7 +160,7 @@ function spawn(){
       wp(Math.random()*canvas.width,Math.random()*canvas.height)
     ],
     wpIndex:0,
-    speed:5,
+    speed:2,
     callsign: randomCallsign(),
     alt: Math.floor(240+Math.random()*120),
     cfl: Math.floor(300+Math.random()*80),
@@ -229,7 +229,7 @@ function updatePanel(){
   const p=document.getElementById("unitPanel");
   if(!selected){
     p.className="muted";
-    p.textContent="Please Select A Designated Unit.";
+    p.textContent="Please Select A Designated Unit";
     return;
   }
   p.className="";
@@ -248,7 +248,7 @@ function updatePanel(){
 let last=performance.now();
 
 function update(now){
-  if(now-last<300) return requestAnimationFrame(update);
+  if(now-last<700) return requestAnimationFrame(update);
   last=now;
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
