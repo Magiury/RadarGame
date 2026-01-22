@@ -136,8 +136,8 @@ resize();
 const TYPES = [
   {name:"Passenger", color:"#00ff66", shape:"diamond", side:"Civilian"},
   {name:"Cargo", color:"#00ffff", shape:"rect", side:"Civilian"},
-  {name:"Friendly", color:"#ffd700", shape:"triangle", side:"Friendly"},
-  {name:"Foreign", color:"#ffffff", shape:"square", side:"Foreign"}
+  {name:"Military", color:"#ffd700", shape:"triangle", side:"Friendly"},
+  {name:"Military", color:"#ffffff", shape:"square", side:"Foreign"}
 ];
 
 function wp(x,y){ return {x,y}; }
@@ -248,7 +248,7 @@ function updatePanel(){
 let last=performance.now();
 
 function update(now){
-  if(now-last<900) return requestAnimationFrame(update);
+  if(now-last<300) return requestAnimationFrame(update);
   last=now;
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
