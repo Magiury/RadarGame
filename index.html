@@ -1,176 +1,263 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>ATC Radar Display</title>
+<title>Radar Command</title>
 
 <style>
-html,body{
+* { box-sizing:border-box; }
+
+body{
   margin:0;
   background:#000;
-  overflow:hidden;
+  color:#9fdcff;
   font-family: monospace;
-  color:#9f9;
+  overflow:hidden;
 }
 
+/* ===== TOP BAR ===== */
 #topbar{
-  height:28px;
-  background:#8fa6b8;
-  color:#000;
+  height:32px;
+  background:#2b2b2b;
   display:flex;
   align-items:center;
-  padding:0 8px;
-  font-size:13px;
+  padding:0 10px;
+  border-bottom:1px solid #444;
+  font-size:12px;
 }
 
-#topbar .right{
-  margin-left:auto;
+/* ===== LAYOUT ===== */
+#container{
+  display:grid;
+  grid-template-columns: 56px 1fr 260px;
+  grid-template-rows: 1fr 48px;
+  height:calc(100vh - 32px);
 }
 
+/* ===== LEFT TOOLBAR ===== */
+#leftbar{
+  grid-row:1 / span 2;
+  background:#1e1e1e;
+  border-right:1px solid #444;
+}
+.tool{
+  height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-bottom:1px solid #333;
+}
+
+/* ===== MAIN VIEW ===== */
+#main{
+  position:relative;
+}
 canvas{
+  width:100%;
+  height:100%;
   display:block;
+  background:#000;
 }
+
+/* ===== RIGHT PANEL ===== */
+#rightbar{
+  background:#1e1e1e;
+  border-left:1px solid #444;
+}
+.panel{
+  padding:8px;
+  border-bottom:1px solid #333;
+  font-size:12px;
+}
+.panel h3{
+  margin:0 0 6px;
+  font-size:12px;
+  color:#fff;
+  border-bottom:1px solid #555;
+}
+
+/* ===== BOTTOM BAR ===== */
+#bottombar{
+  grid-column:2 / span 2;
+  background:#2b2b2b;
+  border-top:1px solid #444;
+  display:flex;
+  align-items:center;
+  padding:0 10px;
+  font-size:12px;
+}
+
+.value{ color:#9fdcff; }
+.muted{ color:#666; }
 </style>
 </head>
 
 <body>
 
 <div id="topbar">
-  <b>18 : 06 : 31</b>
-  <span style="margin-left:10px;">Settings</span>
-  <span style="margin-left:10px;">AirSitu</span>
-  <span style="margin-left:10px;">Info</span>
-  <div class="right">ATC SURVEILLANCE</div>
+  RADAR COMMAND DISPLAY
+  <div style="margin-left:auto" id="time"></div>
 </div>
 
-<canvas id="c"></canvas>
+<div id="container">
+
+  <div id="leftbar">
+    <div class="tool">📡</div>
+    <div class="tool">✈️</div>
+    <div class="tool">⚠️</div>
+  </div>
+
+  <div id="main">
+    <canvas id="radar"></canvas>
+  </div>
+
+  <div id="rightbar">
+    <div class="panel">
+      <h3>UNIT STATUS</h3>
+      <div id="unitPanel" class="muted">
+        Please Select A Designated Unit.
+      </div>
+    </div>
+  </div>
+
+  <div id="bottombar">
+    Message Log · Radar Sweep 1s
+  </div>
+
+</div>
 
 <script>
-const canvas = document.getElementById("c");
+/* ===== TIME ===== */
+setInterval(()=>{
+  document.getElementById("time").textContent =
+    "Local " + new Date().toLocaleTimeString();
+},1000);
+
+/* ===== CANVAS ===== */
+const canvas = document.getElementById("radar");
 const ctx = canvas.getContext("2d");
 
 function resize(){
-  canvas.width = innerWidth;
-  canvas.height = innerHeight - 28;
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
 }
-addEventListener("resize", resize);
+addEventListener("resize",resize);
 resize();
 
-/* ================= AIRCRAFT ================= */
-
+/* ===== DATA ===== */
 const TYPES = [
-  {name:"Passenger", color:"#00ff66", shape:"diamond"},
-  {name:"Cargo", color:"#00ffff", shape:"rect"},
-  {name:"Friendly", color:"#ffd700", shape:"triangle"},
-  {name:"Foreign", color:"#ffffff", shape:"square"}
+  {name:"Passenger", color:"#00ff66", shape:"diamond", side:"Civilian"},
+  {name:"Cargo", color:"#00ffff", shape:"rect", side:"Civilian"},
+  {name:"Friendly Military", color:"#ffd700", shape:"triangle", side:"Friendly"},
+  {name:"Foreign Military", color:"#ffffff", shape:"square", side:"Foreign"}
 ];
 
-function wp(x,y){ return {x,y}; }
+function wp(){ return {x:Math.random()*canvas.width,y:Math.random()*canvas.height}; }
 
-function spawn(){
-  const t = TYPES[Math.floor(Math.random()*TYPES.length)];
-  return {
+function callsign(){
+  const a=["AFR","BAW","SWR","DLH","EZY","ANA"];
+  return a[Math.floor(Math.random()*a.length)]+Math.floor(100+Math.random()*900);
+}
+
+const aircraft=[];
+for(let i=0;i<16;i++){
+  const t=TYPES[Math.floor(Math.random()*TYPES.length)];
+  aircraft.push({
     type:t,
-    x: Math.random()*canvas.width,
-    y: Math.random()*canvas.height,
-    route:[
-      wp(Math.random()*canvas.width,Math.random()*canvas.height),
-      wp(Math.random()*canvas.width,Math.random()*canvas.height),
-      wp(Math.random()*canvas.width,Math.random()*canvas.height),
-      wp(Math.random()*canvas.width,Math.random()*canvas.height)
-    ],
-    wpIndex:0,
+    x:Math.random()*canvas.width,
+    y:Math.random()*canvas.height,
+    route:[wp(),wp(),wp(),wp()],
+    idx:0,
     speed:5,
-    callsign: randomCallsign(),
-    alt: Math.floor(240+Math.random()*120),
-    cfl: Math.floor(300+Math.random()*80)
-  };
+    alt:Math.floor(250+Math.random()*150),
+    spd:Math.floor(350+Math.random()*150),
+    callsign:callsign()
+  });
 }
 
-function randomCallsign(){
-  const a=["AFR","BAW","SWR","DLH","EZY","AAL","ANA"];
-  return a[Math.floor(Math.random()*a.length)] + Math.floor(100+Math.random()*900);
+let selected=null;
+
+/* ===== CLICK ===== */
+canvas.addEventListener("click",e=>{
+  const r=canvas.getBoundingClientRect();
+  const mx=e.clientX-r.left;
+  const my=e.clientY-r.top;
+  selected=null;
+
+  aircraft.forEach(a=>{
+    if(Math.hypot(mx-a.x,my-a.y)<8) selected=a;
+  });
+  updatePanel();
+});
+
+/* ===== PANEL ===== */
+function updatePanel(){
+  const p=document.getElementById("unitPanel");
+  if(!selected){
+    p.className="muted";
+    p.textContent="Please Select A Designated Unit.";
+    return;
+  }
+  p.className="";
+  p.innerHTML=`
+    Callsign: <span class="value">${selected.callsign}</span><br>
+    Type: <span class="value">${selected.type.name}</span><br>
+    Allegiance: <span class="value">${selected.type.side}</span><br>
+    Speed: <span class="value">${selected.spd} kts</span><br>
+    Altitude: <span class="value">FL${selected.alt}</span><br>
+    Route WP: <span class="value">${selected.idx+1}/${selected.route.length}</span>
+  `;
 }
 
-const aircraft = [];
-for(let i=0;i<18;i++) aircraft.push(spawn());
-
-/* ================= DRAW ================= */
-
+/* ===== DRAW ===== */
 function drawSymbol(a){
-  ctx.strokeStyle = a.type.color;
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = a===selected ? "#ff5555" : a.type.color;
+  ctx.lineWidth=1;
   ctx.beginPath();
-
   switch(a.type.shape){
-    case "diamond":
+    case"diamond":
       ctx.moveTo(a.x,a.y-6);
       ctx.lineTo(a.x+6,a.y);
       ctx.lineTo(a.x,a.y+6);
       ctx.lineTo(a.x-6,a.y);
-      ctx.closePath();
-      break;
-    case "square":
-      ctx.rect(a.x-5,a.y-5,10,10);
-      break;
-    case "triangle":
+      ctx.closePath();break;
+    case"square":
+      ctx.rect(a.x-5,a.y-5,10,10);break;
+    case"triangle":
       ctx.moveTo(a.x,a.y-6);
       ctx.lineTo(a.x+6,a.y+6);
       ctx.lineTo(a.x-6,a.y+6);
-      ctx.closePath();
-      break;
-    case "rect":
-      ctx.rect(a.x-7,a.y-4,14,8);
-      break;
+      ctx.closePath();break;
+    case"rect":
+      ctx.rect(a.x-7,a.y-4,14,8);break;
   }
   ctx.stroke();
 }
 
-function drawLabel(a){
-  ctx.fillStyle = a.type.color;
-  ctx.font = "11px monospace";
-  ctx.fillText(a.callsign, a.x+8, a.y-8);
-  ctx.fillText(`S F${a.alt} ↑ CFL`, a.x+8, a.y+4);
-}
-
-/* ================= UPDATE ================= */
-
-let last = performance.now();
-
-function update(now){
-  if(now-last < 900) return requestAnimationFrame(update);
-  last = now;
+/* ===== LOOP ===== */
+let last=0;
+function loop(t){
+  if(t-last<1000) return requestAnimationFrame(loop);
+  last=t;
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   aircraft.forEach(a=>{
-    const wp = a.route[a.wpIndex];
-    const dx = wp.x - a.x;
-    const dy = wp.y - a.y;
-    const d = Math.hypot(dx,dy);
-
-    if(d < 10){
-      a.wpIndex = (a.wpIndex+1) % a.route.length;
-    } else {
-      a.x += dx/d * a.speed;
-      a.y += dy/d * a.speed;
+    const w=a.route[a.idx];
+    const dx=w.x-a.x;
+    const dy=w.y-a.y;
+    const d=Math.hypot(dx,dy);
+    if(d<8) a.idx=(a.idx+1)%a.route.length;
+    else{
+      a.x+=dx/d*a.speed;
+      a.y+=dy/d*a.speed;
     }
-
-    /* heading vector */
-    ctx.strokeStyle = a.type.color;
-    ctx.beginPath();
-    ctx.moveTo(a.x,a.y);
-    ctx.lineTo(a.x + dx/d*25, a.y + dy/d*25);
-    ctx.stroke();
-
     drawSymbol(a);
-    drawLabel(a);
   });
 
-  requestAnimationFrame(update);
+  requestAnimationFrame(loop);
 }
-
-requestAnimationFrame(update);
+requestAnimationFrame(loop);
 </script>
 
 </body>
