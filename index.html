@@ -1,239 +1,249 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Radar Command</title>
+<meta charset="UTF-8">
+<title>Radar Command</title>
 
-  <!-- ========================= -->
-  <!--           CSS             -->
-  <!-- ========================= -->
-  <style>
+<!-- ================================= -->
+<!--               CSS                -->
+<!-- ================================= -->
+<style>
 
-    body {
-      margin: 0;
-      background: #020b10;
-      color: #7fdcff;
-      font-family: monospace;
-    }
+* {
+  box-sizing: border-box;
+}
 
-    button {
-      background: transparent;
-      color: #7fdcff;
-      border: 1px solid #7fdcff;
-      padding: 10px 20px;
-      font-family: monospace;
-      cursor: pointer;
-    }
+body {
+  margin: 0;
+  font-family: monospace;
+  background: #1a1a1a;
+  color: #d0d0d0;
+  overflow: hidden;
+}
 
-    button:hover {
-      background: #7fdcff;
-      color: #020b10;
-    }
+/* ---------- TOP BAR ---------- */
 
-    /* ---------- LOGIN ---------- */
+#topbar {
+  height: 32px;
+  background: #2b2b2b;
+  border-bottom: 1px solid #444;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 12px;
+}
 
-    #login {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
+#topbar span {
+  margin-right: 15px;
+  color: #cfcfcf;
+}
 
-    .login-box {
-      border: 1px solid #0a2a3a;
-      padding: 30px 40px;
-      background: #041a24;
-      text-align: center;
-    }
+/* ---------- MAIN LAYOUT ---------- */
 
-    .login-box h1 {
-      margin-top: 0;
-      color: #9ff;
-    }
+#container {
+  display: flex;
+  height: calc(100vh - 32px);
+}
 
-    /* ---------- GAME ---------- */
+/* ---------- LEFT TOOLBAR ---------- */
 
-    #game {
-      display: none;
-      height: 100vh;
-    }
+#leftbar {
+  width: 48px;
+  background: #2f2f2f;
+  border-right: 1px solid #444;
+  display: flex;
+  flex-direction: column;
+}
 
-    canvas {
-      background: radial-gradient(circle, #041a24 0%, #020b10 70%);
-    }
+.left-btn {
+  height: 48px;
+  border-bottom: 1px solid #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
 
-    #info {
-      width: 220px;
-      padding: 10px;
-      border-left: 1px solid #0a2a3a;
-    }
+.left-btn:hover {
+  background: #3a3a3a;
+}
 
-    #info h3 {
-      margin-top: 0;
-      color: #9ff;
-    }
+/* ---------- CENTER ---------- */
 
-  </style>
+#center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* MAIN VIEW */
+#mainView {
+  flex: 1;
+  background: #0c1418;
+  position: relative;
+}
+
+#radar {
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at center, #0f2a33 0%, #050a0d 70%);
+}
+
+/* ---------- BOTTOM BAR ---------- */
+
+#bottombar {
+  height: 48px;
+  background: #2b2b2b;
+  border-top: 1px solid #444;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+/* ---------- RIGHT PANEL ---------- */
+
+#rightbar {
+  width: 260px;
+  background: #2f2f2f;
+  border-left: 1px solid #444;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel {
+  border-bottom: 1px solid #444;
+  padding: 8px;
+  font-size: 12px;
+}
+
+.panel h3 {
+  margin: 0 0 6px 0;
+  font-size: 12px;
+  color: #ffffff;
+  border-bottom: 1px solid #555;
+  padding-bottom: 4px;
+}
+
+.value {
+  color: #9fdcff;
+}
+
+</style>
 </head>
 
 <body>
 
-  <!-- ========================= -->
-  <!--          LOGIN            -->
-  <!-- ========================= -->
-  <div id="login">
-    <div class="login-box">
-      <h1>RADAR COMMAND</h1>
-      <p>Early Warning / Air Defense Console</p>
-      <button onclick="enterDuty()">ENTER DUTY STATION</button>
-    </div>
+<!-- ================================= -->
+<!--             TOP BAR              -->
+<!-- ================================= -->
+<div id="topbar">
+  <span>File</span>
+  <span>View</span>
+  <span>Map Settings</span>
+  <span>Unit Orders</span>
+  <span>Missions</span>
+  <span style="margin-left:auto;">
+    Zulu 00:00 | Local 08:00 | Camera Alt 52473m
+  </span>
+</div>
+
+<!-- ================================= -->
+<!--            MAIN BODY             -->
+<!-- ================================= -->
+<div id="container">
+
+  <!-- LEFT TOOLBAR -->
+  <div id="leftbar">
+    <div class="left-btn">🛰️</div>
+    <div class="left-btn">📡</div>
+    <div class="left-btn">✈️</div>
+    <div class="left-btn">🚢</div>
   </div>
 
-  <!-- ========================= -->
-  <!--           GAME            -->
-  <!-- ========================= -->
-  <div id="game">
-    <canvas id="radar" width="600" height="600"></canvas>
+  <!-- CENTER -->
+  <div id="center">
 
-    <div id="info">
-      <h3>TRACK DATA</h3>
-      <div id="trackInfo">No track selected</div>
+    <div id="mainView">
+      <canvas id="radar"></canvas>
     </div>
+
+    <div id="bottombar">
+      <span>Message Log</span>
+      <span style="margin-left:20px;">⏱ 1x</span>
+      <span style="margin-left:20px;">Weather: Clear</span>
+    </div>
+
   </div>
 
-  <!-- ========================= -->
-  <!--        JAVASCRIPT         -->
-  <!-- ========================= -->
-  <script>
+  <!-- RIGHT PANEL -->
+  <div id="rightbar">
 
-    /* ---------- LOGIN LOGIC ---------- */
+    <div class="panel">
+      <h3>UNIT STATUS</h3>
+      <div>Unit: <span class="value">ROKS Gangwon</span></div>
+      <div>Side: <span class="value">South Korea</span></div>
+      <div>Speed: <span class="value">0 kts</span></div>
+    </div>
 
-    function enterDuty() {
-      document.getElementById("login").style.display = "none";
-      document.getElementById("game").style.display = "flex";
-      startGame();
-    }
+    <div class="panel">
+      <h3>WEAPONS</h3>
+      <div>RIM-116 RAM: <span class="value">21</span></div>
+      <div>Phalanx CIWS: <span class="value">Ready</span></div>
+    </div>
 
-    /* ---------- GAME SETUP ---------- */
+    <div class="panel">
+      <h3>FUEL</h3>
+      <div>Remaining: <span class="value">14330</span> units</div>
+    </div>
 
-    let canvas, ctx, info;
-    let tracks = [];
-    let selectedTrack = null;
+    <div class="panel">
+      <h3>EMCON</h3>
+      <div>Status: <span class="value">Passive</span></div>
+    </div>
 
-    function rand(min, max) {
-      return Math.random() * (max - min) + min;
-    }
+  </div>
 
-    class Track {
-      constructor() {
-        this.x = rand(0, 600);
-        this.y = rand(0, 600);
+</div>
 
-        this.vx = rand(-0.3, 0.3);
-        this.vy = rand(-0.3, 0.3);
+<!-- ================================= -->
+<!--            JAVASCRIPT            -->
+<!-- ================================= -->
+<script>
 
-        this.altitude = rand(8000, 36000);
-        this.speed = rand(200, 550);
+const canvas = document.getElementById("radar");
+const ctx = canvas.getContext("2d");
 
-        this.trueType = Math.random() < 0.7 ? "CIVILIAN" : "MILITARY";
-        this.transponder = this.trueType === "CIVILIAN";
+function resize() {
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+}
+window.addEventListener("resize", resize);
+resize();
 
-        this.confidence = rand(20, 50);
-        this.ew = this.trueType === "MILITARY" ? rand(0.2, 0.6) : 0;
+/* simple radar grid */
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        this.visible = true;
-      }
+  ctx.strokeStyle = "#12333f";
+  ctx.lineWidth = 1;
 
-      update() {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
 
-        this.x = (this.x + this.vx + 600) % 600;
-        this.y = (this.y + this.vy + 600) % 600;
+  for (let r = 80; r < Math.min(cx, cy); r += 80) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 
-        /* --- EW flicker --- */
-        if (this.ew > 0 && Math.random() < 0.02) {
-          this.visible = false;
-          setTimeout(() => this.visible = true, rand(500, 1200));
-        }
+  requestAnimationFrame(draw);
+}
 
-        /* --- Confidence logic --- */
-        let delta = 0;
+draw();
 
-        delta += this.transponder ? 0.05 : -0.1;
-        delta += Math.abs(this.vx) < 0.2 ? 0.03 : -0.05;
-        delta -= this.ew * 0.1;
-
-        this.confidence += delta;
-
-        let cap = this.trueType === "MILITARY" ? 70 : 100;
-        this.confidence = Math.max(0, Math.min(this.confidence, cap));
-      }
-
-      draw() {
-        if (!this.visible) return;
-
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
-        ctx.fillStyle = "#7fdcff";
-        ctx.fill();
-      }
-    }
-
-    function startGame() {
-
-      canvas = document.getElementById("radar");
-      ctx = canvas.getContext("2d");
-      info = document.getElementById("trackInfo");
-
-      for (let i = 0; i < 8; i++) {
-        tracks.push(new Track());
-      }
-
-      canvas.addEventListener("click", selectTrack);
-
-      requestAnimationFrame(loop);
-    }
-
-    function selectTrack(e) {
-
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-
-      selectedTrack = tracks.find(t =>
-        Math.hypot(t.x - mx, t.y - my) < 6
-      );
-    }
-
-    function loop() {
-
-      ctx.clearRect(0, 0, 600, 600);
-
-      /* --- Radar circles --- */
-      ctx.strokeStyle = "#0a2a3a";
-      for (let r = 50; r <= 300; r += 50) {
-        ctx.beginPath();
-        ctx.arc(300, 300, r, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      tracks.forEach(t => {
-        t.update();
-        t.draw();
-      });
-
-      if (selectedTrack) {
-        info.innerHTML = `
-          Altitude: ${selectedTrack.visible ? selectedTrack.altitude.toFixed(0) : "—"} ft<br>
-          Speed: ${selectedTrack.visible ? selectedTrack.speed.toFixed(0) : "—"} kts<br>
-          Transponder: ${selectedTrack.transponder ? "ON" : "OFF"}<br>
-          Identification Confidence: ${selectedTrack.confidence.toFixed(1)}%
-        `;
-      }
-
-      requestAnimationFrame(loop);
-    }
-
-  </script>
+</script>
 
 </body>
 </html>
