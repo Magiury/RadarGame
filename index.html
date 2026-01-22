@@ -10,7 +10,7 @@
 body {
   margin: 0;
   font-family: monospace;
-  background: #1a1a1a;
+  background: #111;
   color: #d0d0d0;
   overflow: hidden;
 }
@@ -55,13 +55,13 @@ body {
 
 #mainView {
   flex: 1;
-  background: #0c1418;
+  background: #050a0d; /* PLAIN BACKGROUND */
 }
 
 canvas {
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle, #0f2a33 0%, #050a0d 70%);
+  background: #050a0d; /* NO RADAR ART */
 }
 
 /* ================= BOTTOM ================= */
@@ -174,27 +174,29 @@ let zoom = 1;
 canvas.addEventListener("wheel", e => {
   e.preventDefault();
   zoom += e.deltaY * -0.001;
-  zoom = Math.min(Math.max(zoom, 0.5), 2.5);
+  zoom = Math.min(Math.max(zoom, 0.5), 3);
   document.getElementById("zoomInfo").textContent =
     "Zoom: " + Math.round(zoom * 100) + "%";
 });
 
-/* ================= AIRCRAFT ================= */
+/* ================= AIRCRAFT (RANDOM WALK) ================= */
 
 const aircraft = [];
 let selected = null;
 
 function spawnAircraft() {
   return {
-    angle: Math.random() * Math.PI * 2,
-    radius: 200 + Math.random() * 200,
-    speed: 0.002 + Math.random() * 0.002,
-    altitude: Math.floor(10000 + Math.random() * 20000),
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    vx: (Math.random() - 0.5) * 0.8,
+    vy: (Math.random() - 0.5) * 0.8,
+    altitude: Math.floor(8000 + Math.random() * 25000),
+    speed: Math.floor(250 + Math.random() * 250),
     type: Math.random() > 0.5 ? "Civilian" : "Military"
   };
 }
 
-for (let i = 0; i < 8; i++) aircraft.push(spawnAircraft());
+for (let i = 0; i < 10; i++) aircraft.push(spawnAircraft());
 
 canvas.addEventListener("click", e => {
   const rect = canvas.getBoundingClientRect();
@@ -204,10 +206,8 @@ canvas.addEventListener("click", e => {
   selected = null;
 
   aircraft.forEach(a => {
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const x = cx + Math.cos(a.angle) * a.radius * zoom;
-    const y = cy + Math.sin(a.angle) * a.radius * zoom;
+    const x = canvas.width / 2 + (a.x - canvas.width / 2) * zoom;
+    const y = canvas.height / 2 + (a.y - canvas.height / 2) * zoom;
 
     if (Math.hypot(mx - x, my - y) < 6) selected = a;
   });
@@ -215,13 +215,13 @@ canvas.addEventListener("click", e => {
   updatePanel();
 });
 
-/* ================= UI ================= */
+/* ================= PANEL ================= */
 
 function updatePanel() {
   const panel = document.getElementById("unitInfo");
 
   if (!selected) {
-    panel.innerHTML = "Please Select A Designated Unit.";
+    panel.textContent = "Please Select A Designated Unit.";
     panel.className = "muted";
     return;
   }
@@ -230,41 +230,45 @@ function updatePanel() {
   panel.innerHTML = `
     Type: <span class="value">${selected.type}</span><br>
     Altitude: <span class="value">${selected.altitude} ft</span><br>
-    Speed: <span class="value">${Math.round(selected.speed * 50000)} kts</span>
+    Speed: <span class="value">${selected.speed} kts</span>
   `;
 }
 
 /* ================= LOOP ================= */
 
-function draw() {
+function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const cx = canvas.width / 2;
-  const cy = canvas.height / 2;
-
-  ctx.strokeStyle = "#12333f";
-  for (let r = 80; r < Math.min(cx, cy); r += 80) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * zoom, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
   aircraft.forEach(a => {
-    a.angle += a.speed;
 
-    const x = cx + Math.cos(a.angle) * a.radius * zoom;
-    const y = cy + Math.sin(a.angle) * a.radius * zoom;
+    /* random drift */
+    if (Math.random() < 0.02) {
+      a.vx += (Math.random() - 0.5) * 0.2;
+      a.vy += (Math.random() - 0.5) * 0.2;
+    }
+
+    a.x += a.vx;
+    a.y += a.vy;
+
+    /* wrap edges */
+    if (a.x < 0) a.x = canvas.width;
+    if (a.y < 0) a.y = canvas.height;
+    if (a.x > canvas.width) a.x = 0;
+    if (a.y > canvas.height) a.y = 0;
+
+    const drawX = canvas.width / 2 + (a.x - canvas.width / 2) * zoom;
+    const drawY = canvas.height / 2 + (a.y - canvas.height / 2) * zoom;
 
     ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.arc(drawX, drawY, 4, 0, Math.PI * 2);
     ctx.fillStyle = a === selected ? "#ffcc00" : "#7fdcff";
     ctx.fill();
   });
 
-  requestAnimationFrame(draw);
+  requestAnimationFrame(loop);
 }
 
-draw();
+loop();
 
 </script>
 
